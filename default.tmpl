@@ -1,0 +1,1009 @@
+<!DOCTYPE HTML>
+<title>Chord Diagram</title>
+
+<link href="https://fonts.googleapis.com/css?family=Lato:400,700,900&amp;display=swap" rel="stylesheet" type="text/css">
+
+<link rel="stylesheet" href="css/tippy.translucent.css">
+
+<style>
+#chart .tippy-content, #featured-chart .tippy-content {
+    font-family: "Lato", sans-serif !important;
+}
+
+#chart, #featured-chart {
+    font-size: 18px;
+    font-family: "Lato", sans-serif !important;
+    text-align: center;
+    fill: #454545;
+}
+
+<%
+    chart_width = width if width else "700px"
+%>
+
+#chart svg, #featured-chart svg {
+    max-width: ${chart_width};
+}
+
+<%
+    thumbs_width_arr = thumbs_width if thumbs_width else "85px"
+    thumbs_margin_arr = thumbs_margin if thumbs_margin else "5px"
+    thumbs_font_size_arr = thumbs_font_size if thumbs_font_size else "14px"
+%>
+
+.details_thumbs-chart {
+    margin: ${thumbs_margin_arr};
+    max-width: ${thumbs_width_arr};
+    padding: 0;
+    display: inline-block;
+}
+
+.details_thumbs-chart img {
+    max-width: ${thumbs_width_arr};
+}
+
+.details_thumbs-chart figcaption {
+    text-align: center;
+    font-size: ${thumbs_font_size_arr};
+}
+
+#chart .hidden_chord, #featured-chart .hidden_chord {
+    display:none;
+}
+
+#chart .arc_numbers, #featured-chart .arc_numbers {
+    paint-order: stroke;
+    stroke: #454545;
+    stroke-width: 2px;
+    font-weight: bold;
+    fill: #fff;
+    font-size: 10px;
+}
+
+
+@media (min-width: 600px) {
+    #chart svg, #featured-chart svg {
+        font-size: 18px;
+    }
+
+    #chart .arc_numbers, #featured-chart .arc_numbers {
+        font-size: 14px;
+    }
+}
+
+#chart .data_table {
+    display: inline-block;
+    vertical-align: top;
+    margin-left:50px;
+    min-height:  158.0px;
+    max-height:  158.0px;
+    margin-top: 80px;
+    border-collapse: collapse;
+    font-size: 0.8em;
+    font-family: sans-serif;
+    overflow-x: hidden;
+    overflow-y: scroll;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
+}
+
+#chart .data_table thead th {
+    position: -webkit-sticky;
+    position: sticky;
+    top: 0;
+    color: #ffffff;
+    font-weight: bold;
+    background-color: #333;
+}
+
+<%
+    column_width = data_table_column_width if data_table_column_width else "70px"
+%>
+
+#chart .data_table th,
+#chart .data_table td {
+    padding: 5px 15px;
+    text-align: left !important;
+    width:${column_width};
+    max-width:${column_width};
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#chart .data_table th {
+    padding: 12px 15px !important;
+}
+
+#chart .data_table  th:last-child {
+    border-radius: 0px 5px 0 0;
+}
+
+#chart .data_table  th:first-child {
+    border-radius: 5px 0 0 0;
+}
+
+
+#chart .data_table tbody tr {
+    border-bottom: 1px solid #dddddd;
+}
+
+#chart .data_table tbody tr:nth-of-type(even) {
+    background-color: #f9f9f9;
+}
+
+#chart .data_table tbody tr:nth-of-type(odd) {
+    background-color: #f3f3f3;
+}
+
+#chart .data_table tbody tr:last-of-type {
+    border-bottom: 2px solid #333;
+}
+
+#chart .data_table tbody tr.active-row {
+    font-weight: bold;
+    color: #333;
+}
+
+</style>
+
+
+    <div id="chart"></div>
+    <script>
+    (function() {
+        var jupyter_classic = !(typeof(IPython)==="undefined");
+        var dependencies_paths = {
+                        'd3': 'js/d3.v7.min',
+                        'chord': 'js/d3-chord',
+                        '@popperjs/core': 'js/popper.min',
+                        'tippy': 'js/tippy.min',
+                    }
+
+        if(jupyter_classic){
+            require.config(
+                {
+                    paths: dependencies_paths
+                }
+            );
+
+            require([
+                'd3',
+                'tippy',
+                'chord',
+                ], function(d3, tippy, chord, pako) {
+                window.d3 = d3;
+                window.tippy = tippy;
+                window.pako = pako;
+                plot();
+            });
+        }
+        else{
+            var dependencies = Object.values(dependencies_paths);
+
+            function dependency_loader(dependencies_loaded){
+                var script = document.createElement("script");
+                script.type = "text/javascript";
+                script.src = dependencies[dependencies_loaded] + ".js"//?v=8&m=0&u=p7HRfKSn38ymnZifsIetpaKbmpOkm655n9aqw2nAZ8yladW7&r=1-0-0";
+
+                script.onload = function () {
+                    if(dependencies_loaded < dependencies.length-1){
+                    dependency_loader(dependencies_loaded+1)
+                    }
+                    else{
+                        plot();
+                    }
+                };
+                document.body.appendChild(script);
+            }
+
+            dependency_loader(0);
+        }
+
+        function plot(){
+          // === Read in mako parameters ===
+
+% if label_style == 'star':
+              let margin = {
+                left: 120.60000000000001,
+                right: 120.60000000000001,
+                top: 120.60000000000001,
+                bottom: 120.60000000000001
+              };
+% elif label_style == 'radial':
+              let margin = {
+                  left: 36,
+                  right: 36,
+                  top: 36,
+                  bottom: 36
+              };
+% else:
+              let margin = {
+                left: 148.75530000000003,
+                right: 148.75530000000003,
+                top: 148.75530000000003,
+                bottom: 148.75530000000003
+              };
+
+% endif
+
+
+
+            let width = Math.min(window.innerWidth, 700) - margin.left - margin.right;
+            let height = Math.min(window.innerWidth, 700) - margin.top - margin.bottom;
+
+            Names = ${names};
+            matrix = ${matrix};
+
+            <%
+                pull_arr = json.dumps(pull) if 'pull' in locals() and pull is not None else '""'
+            %>
+            let Pull = ${pull_arr};;
+            let Highlight = [0, 0, 0, 0, 0, 0];
+
+
+
+
+            <%!
+                import json
+            %>
+
+            <%
+                is_list = isinstance(colors, (list, tuple))
+                colors_js = json.dumps(colors) if is_list else "d3.interpolate" + colors
+            %>
+
+            callout_stroke_width = "${callout_stroke_width}";
+            callout_line_color = "${callout_line_color}";
+            directed = "${directed}";
+            reverse_gradient = "${reverse_gradient}";
+            gradient_colors="${gradient_colors}";
+            chord_stroke_color="${chord_stroke_color}";
+            arc_stroke_color="${arc_stroke_color}";
+            chord_stroke_width="${chord_stroke_width}";
+            arc_stroke_width="${arc_stroke_width}";
+            labels_color_match="${labels_color_match}";
+            data_table_show_indices="${data_table_show_indices}";
+            data_table_unique_column="${data_table_unique_column}";
+            arc_numbers="${arc_numbers}";
+            rotate="${rotate}";
+
+            <%
+                dt = json.dumps(data_table) if 'data_table' in locals() and data_table is not None else '""'
+            %>
+            var data_table = ${dt};
+
+            <%
+                deets = json.dumps(details) if 'details' in locals() and details is not None else '""'
+            %>
+            var details = ${deets};
+
+            <%
+                dthumbs = json.dumps(details_thumbs) if 'details_thumbs' in locals() and details_thumbs is not None else '""'
+            %>
+            var details_thumbs = ${dthumbs};
+
+% if directed:
+            let conjunction = "&rarr;";
+% else:
+            let conjunction = "and";
+% endif
+
+<%
+    innerRadius_arr = inner_radius_scale if inner_radius_scale else 0.45
+    outerRadius_arr = outer_radius_scale if outer_radius_scale else 1.1
+%>
+            let innerRadius = Math.min(width, height) * ${innerRadius_arr};
+            let outerRadius = innerRadius * ${outerRadius_arr};
+
+% if label_style == 'default':
+            margin.top = ((innerRadius*1.2) - innerRadius);
+            margin.top += 9.0;
+
+            margin.bottom = ((innerRadius*1.2) - innerRadius);
+            margin.bottom += 9.0;
+
+            margin.top += 0
+            margin.bottom += 0
+% endif
+
+            let offset = 0;
+
+% if colors:
+    % if isinstance(colors, list):
+        var colors = d3.scaleOrdinal()
+            .domain(d3.range(matrix.length))
+            .range(${colors_js | n});
+    % else:
+        var colors = d3.scaleSequential(${colors_js})
+            .domain([0, matrix.length]);
+    % endif
+% else:
+    var colors = d3.scaleSequential(d3.interpolateRainbow)
+        .domain([0, matrix.length]);
+% endif
+
+
+            var chord_data = chord(false,false)
+                .padAngle(0.01)
+                .sortChords(d3.descending)
+                (matrix);
+
+            var arc = d3.arc()
+
+% if directed == True:
+            var path = d3.ribbonArrow()
+% else:
+            var path = d3.ribbon()
+% endif
+                         .startAngle(startAngle)
+                         .endAngle(endAngle);
+
+
+            var svg = d3.select("#chart")
+                .append("svg")
+                .attr(
+                    "viewBox",
+                    "0 0 " +
+                    (width + margin.left + margin.right) +
+                    " " +
+                    (height + margin.top + margin.bottom)
+                )
+                .attr("class","plot")
+                .attr("preserveAspectRatio", "xMinYMin meet")
+                .append("g")
+                .attr(
+                    "transform",
+                    "translate(" +
+                    (width / 2 + margin.left) +
+                    "," +
+                    (height / 2 + margin.top) +
+% if rotate:
+                    ") rotate(${rotate})"
+% else:
+                    ") rotate(0)"
+% endif
+
+                );
+
+
+
+
+
+
+            function getGradID(d) {
+                return ("linkGrad-chart-" + d.source.index + "-" + d.target.index);
+            }
+
+
+            var grads = svg.append("defs")
+                .selectAll("linearGradient")
+                .data(chord_data)
+                .enter()
+                .append("linearGradient")
+                .attr("id", getGradID)
+                .attr("gradientUnits", "userSpaceOnUse")
+                .attr("x1", function (d, i) {
+                    if(d.source.index == d.target.index){
+                        return 0;
+                    }
+                    return (innerRadius * Math.cos((d.source.endAngle - d.source.startAngle) / 2 + d.source.startAngle - Math.PI / 2));
+                })
+                .attr("y1", function (d, i) {
+                    return (innerRadius * Math.sin((d.source.endAngle - d.source.startAngle) / 2 + d.source.startAngle - Math.PI / 2));
+                })
+                .attr("x2", function (d, i) {
+                    return (innerRadius * Math.cos((d.target.endAngle - d.target.startAngle) / 2 + d.target.startAngle - Math.PI / 2));
+                })
+                .attr("y2", function (d, i) {
+                    return (innerRadius * Math.sin((d.target.endAngle - d.target.startAngle) / 2 + d.target.startAngle - Math.PI / 2));
+                });
+
+
+            grads.append("stop")
+                .attr("offset", "0%")
+                .attr("stop-color", function (d) {
+% if reverse_gradient:
+                    return colors(d.target.index);
+% else:
+                    return colors(d.source.index);
+% endif
+                });
+
+
+            grads.append("stop")
+                .attr("offset", "100%")
+                .attr("stop-color", function (d) {
+% if reverse_gradient:
+                    return colors(d.source.index);
+% else:
+                    return colors(d.target.index);
+% endif
+                });
+
+
+            var outerArcs = svg.selectAll("g.group")
+                .data(chord_data.groups)
+                .enter()
+                .append("g")
+                .attr("class", "group")
+                .on("mouseover", mouseinArc(Names))
+                .on("mouseout", mouseoutArc(Names));
+
+            outerArcs.append("path")
+                .style("fill", function (d) {
+                    return colors(d.index);
+                })
+                .style("stroke", function (d) {
+% if arc_stroke_color:
+                    return arc_stroke_color;
+% else:
+                    return colors(d.index);
+% endif
+                })
+% if arc_stroke_width:
+                .style("stroke-width", arc_stroke_width)
+% else:
+                .style("stroke-width", 0)
+% endif
+                .attr("d", function(d){
+                    return arc
+                        .innerRadius(innerRadius * 1.01 + Pull[d.index])
+                        .outerRadius(outerRadius + Pull[d.index])
+                        .startAngle(startAngle)
+                        .endAngle(endAngle)(d)
+                })
+
+% if label_style == 'radial':
+                .each(function (d, i) {
+                    d.angle = (d.startAngle + d.endAngle) / 2 + offset;
+
+                    var firstArcSection = /(^.+?)L/;
+
+
+                    var newArc = firstArcSection.exec(d3.select(this).attr("d"))[1];
+
+                    newArc = newArc.replace(/,/g, " ");
+
+
+
+                    if (!((d.angle > (Math.PI*1.5))|| (d.angle < (Math.PI*.5)))) {
+                        var startLoc = /M(.*?)A/;
+                        var middleLoc = /A(.*?)0 0 1/;
+                        var endLoc = /0 0 1 (.*?)$/;
+
+
+                        var newStart = endLoc.exec(newArc)[1];
+                        var newEnd = startLoc.exec(newArc)[1];
+                        var middleSec = middleLoc.exec(newArc)[1];
+
+                        newArc = "M" + newStart + "A" + middleSec + "0 0 0 " + newEnd;
+                    }
+
+
+                    svg.append("path")
+                        .attr("class", "hiddenArcs")
+                        .attr("id", "arc-chart-" + i)
+                        .attr("d", newArc)
+                        .style("fill", "none");
+                });
+% else:
+                .each(function (d, i) {
+                });
+% endif
+
+% if label_style == 'star':
+              outerArcs.append("text")
+                  .each(function (d) {
+                      d.angle = (d.startAngle + d.endAngle) / 2 + offset;
+                  })
+                  .attr("dy", ".35em")
+                  .attr("class", function (d) {
+                      return "titles";
+                  })
+                  .attr("text-anchor", function (d) {
+                      return d.angle > Math.PI ? "end" : null;
+                  })
+                  .attr("transform", function (d) {
+                      return ("rotate(" + ((d.angle * 180) / Math.PI - 90) + ")" + "translate(" + (outerRadius + 10 + Pull[d.index]) + ")" + (d.angle > Math.PI ? "rotate(180)" : ""));
+                  })
+% if labels_color_match:
+                  .style("fill", function (d, i) {
+                          return colors(i);
+                  })
+% endif
+                  .text(function (d, i) {
+                      return Names[i];
+                  })
+                  .call(wrap, 84.60000000000001);
+% elif label_style == 'radial':
+              outerArcs.append("text")
+                  .attr("class", "titles")
+                  .attr("dy", function (d, i) {
+                      return (d.angle > (Math.PI*1.5) || d.angle < (Math.PI*.5))
+                          ? -18
+                          : 18
+                  })
+                  .append("textPath")
+                  .attr("startOffset", "50%")
+                  .attr("dominant-baseline", "central")
+                  .style("text-anchor", "middle")
+                  .attr("xlink:href", function (d, i) {
+                      return "#arc-chart-" + i;
+                  })
+% if labels_color_match:
+                  .style("fill", function (d, i) {
+                          return colors(i);
+                  })
+% endif
+                  .text(function (d, i) {
+                      return Names[i];
+                  });
+% else:
+              var outer_arc = d3.arc().innerRadius(outerRadius).outerRadius(outerRadius).cornerRadius(0);
+              var label_arc = d3.arc().innerRadius(outerRadius * 1.1).outerRadius(outerRadius * 1.1).cornerRadius(0);
+
+              function midAngle(d) {
+                  return d.startAngle + (d.endAngle - d.startAngle) / 2;
+              }
+
+              function calculatePoints(d) {
+                  outer_arc = d3.arc().innerRadius(outerRadius + Pull[d.index]).outerRadius(outerRadius + Pull[d.index]).cornerRadius(0)
+                  label_arc = d3.arc().innerRadius(outerRadius * 1.1 + Pull[d.index]).outerRadius(outerRadius * 1.1 + Pull[d.index]).cornerRadius(0)
+
+                  var pos = label_arc.centroid(d);
+                  pos[0] = outerRadius * 1.22 * (midAngle(d) < Math.PI ? 1 : -1) + ((midAngle(d) < Math.PI ? 1 : -1) * Pull[d.index]);
+
+                  var outer_arc_offset = outer_arc.centroid(d);
+                  var label_arc_offset = label_arc.centroid(d);
+
+                  return [outer_arc_offset, label_arc_offset, pos]
+              }
+
+              function labelTransform(d) {
+                  label_arc = d3.arc().innerRadius(outerRadius * 1.1 + Pull[d.index]).outerRadius(outerRadius * 1.1 + Pull[d.index]).cornerRadius(0)
+
+                  var pos = label_arc.centroid(d);
+                  pos[0] = outerRadius * 1.24 * (midAngle(d) < Math.PI ? 1 : -1) + ((midAngle(d) < Math.PI ? 1 : -1) * Pull[d.index]);
+
+                  return 'translate(' + pos + ')';
+              }
+
+              outerArcs.append("text")
+                  .attr("class", function (d) {
+                      return "titles";
+                  })
+                  .attr('transform', labelTransform)
+% if labels_color_match:
+                  .style("fill", function (d, i) {
+                          return colors(i);
+                  })
+% endif
+                  .text(function (d, i) {
+                      return Names[i];
+                  })
+                  .style('text-anchor', function (d) {
+                      return (midAngle(d)) < Math.PI ? 'start' : 'end';
+                  })
+                  .call(wrap, 84.60000000000001);
+
+
+              outerArcs.append('polyline')
+                  .attr('points', calculatePoints)
+
+                  .style("stroke", function (d) {
+% if callout_line_color:
+                      return callout_line_color;
+% else:
+                      return colors(d.index);
+% endif
+                  })
+                  .style("fill", "none")
+% if callout_stroke_width:
+                  .style("stroke-width", callout_stroke_width)
+% else:
+                  .style("stroke-width", "1.5px")
+% endif
+                  .style("shape-rendering", "geometricPrecision");
+% endif
+
+% if arc_numbers == True:
+                outerArcs.append("text")
+                    .each(function (d) {
+                        d.angle = (d.startAngle + d.endAngle) / 2 + offset;
+                    })
+                    .attr("dy", ".35em")
+                    .attr("class", function (d) {
+                        return "arc_numbers";
+                    })
+                    .attr("text-anchor", function (d) {
+                        return d.angle > Math.PI ? "middle" : "middle";
+                    })
+                    .attr("transform", function (d) {
+                        return (
+                            "rotate(" +
+                            ((d.angle * 180) / Math.PI - 90) +
+                            ")" +
+                            "translate(" +
+                            (innerRadius + ((outerRadius - innerRadius)/2) +  Pull[d.index])  +
+                            ")" +
+                            ((d.angle > (Math.PI*1.5) || d.angle < (Math.PI*.5)) ? "rotate(90)" : "rotate(-90)")
+                        );
+                    })
+                    .text(function (d, i) {
+                        return matrix[d.index].reduce((a, b) => a + b, 0);
+                    });
+% endif
+
+                var chords = svg.selectAll("path.chord")
+                    .data(chord_data)
+                    .enter()
+                    .append("path")
+
+                .attr("class", function (d) {
+                    return "chord";
+                })
+                .style("fill", function (d) {
+% if gradient_colors == False:
+                        return colors(d.source.index);
+% else:
+                        return "url(#" + getGradID(d) + ")";
+% endif
+                })
+                .style("stroke", function (d) {
+% if chord_stroke_color:
+                    return chord_stroke_color;
+% else:
+                    return "url(#" + getGradID(d) + ")";
+% endif
+                })
+% if chord_stroke_width:
+                .style("stroke-width", chord_stroke_width)
+% else:
+                .style("stroke-width", 0)
+% endif
+                .style("fill-opacity", function (d, i) {
+                    if (Highlight[d.source.index] == 1 || Highlight[d.target.index] == 1) {
+                        return 1;
+                    }
+                    else {
+                        return 0.4;
+                    }
+                    })
+                .style("stroke-opacity", function (d, i) {
+                    if (Highlight[d.source.index] == 1 || Highlight[d.target.index] == 1) {
+                        return 1;
+                    }
+                    else {
+                        return 0.4;
+                    }
+                    })
+                .attr("d", function(d){
+                    d.source.radius = Math.max(innerRadius + Pull[d.source.index], 0);
+                    d.target.radius = Math.max(innerRadius + Pull[d.target.index], 0);
+
+                    return path(d);
+                })
+                .on("mouseover", mouseinChord(Names, conjunction, details, details_thumbs))
+                .on("mouseout", mouseoutChord(Names));
+
+            function startAngle(d) {
+                return d.startAngle + offset;
+            }
+            function endAngle(d) {
+                return d.endAngle + offset;
+            }
+
+            function wrap(text, width) {
+                text.each(function() {
+                    var text = d3.select(this);
+                    var words = text.text().split(/\s+/).reverse();
+                    var word;
+                    var line = [];
+                    var y = text.attr("y");
+                    var dy = parseFloat(text.attr("dy"));
+                    var tspan = text.text(null).append("tspan").attr("x", 0).attr("y", y).attr("dy", dy + "em");
+                    var lines = 0;
+
+                    while (word = words.pop()) {
+                        line.push(word)
+                        tspan.text(line.join(" "))
+
+                        if (tspan.node().getComputedTextLength() > width && line.length > 1) {
+                            line.pop()
+                            if(line.length != 0){
+                                tspan.text(line.join(" "))
+                            }
+                            line = [word]
+                            tspan = text.append("tspan").attr("x", 0).attr("y", y).attr("dy", "1em").text(word)
+                            lines = lines+1;
+                        }
+                    }
+                    text.select("tspan:nth-child(1)").attr("dy", ""+(0.35-(lines * 0.5))+"em");
+                })
+            }
+
+
+            function mouseinArc(names) {
+                return function (i, d) {
+% if data_table:
+                    if(table_locked){
+                        return;
+                    }
+
+                    update_table(names[d.index], -1);
+% endif
+                    d3.select(this.ownerSVGElement)
+                        .selectAll("path.chord")
+                        .filter(function (k) {
+                            return k.source.index !== d.index && k.target.index !== d.index;
+                        })
+                        .transition()
+                        .style("fill-opacity", 0.1)
+                        .style("stroke-opacity", 0.1);
+
+                    d3.select(this.ownerSVGElement)
+                        .selectAll("path.chord")
+                        .filter(function (k) {
+                            return k.source.index == d.index || k.target.index == d.index;
+                        })
+                        .transition()
+                        .style("stroke-opacity", 1)
+                        .style("fill-opacity", 1);
+                };
+            }
+
+
+            function mouseoutArc(names) {
+                return function (i, d) {
+% if data_table:
+                    if(table_locked){
+                        return;
+                    }
+
+                    update_table(names[d.index], -1);
+% endif
+                    d3.select(this.ownerSVGElement)
+                    .selectAll("path.chord")
+                    .transition()
+                    .style("fill-opacity", function (d, i) {
+                        if (Highlight[d.source.index] == 1 || Highlight[d.target.index] == 1) {
+                            return 1;
+                        }
+                        else {
+                            return 0.4;
+                        }
+                    })
+                    .style("stroke-opacity", function (d, i) {
+                        if (Highlight[d.source.index] == 1 || Highlight[d.target.index] == 1) {
+                            return 1;
+                        }
+                        else {
+                            return 0.4;
+                        }
+                    });
+                };
+            }
+
+
+
+            function mouseinChord(names, conjunction, details, details_thumbs) {
+                return function (i, d) {
+% if data_table:
+                    if(table_locked){
+                        if (this._tippy) {
+                            this._tippy.destroy();
+                        }
+                        return;
+                    }
+                    update_table(names[d.source.index], names[d.target.index]);
+% endif
+                    d3.select(this.ownerSVGElement)
+                        .selectAll("path.chord")
+                        .transition()
+                        .style("fill-opacity", 0.1)
+                        .style("stroke-opacity", 0.1);
+
+
+                    d3.select(this)
+                    .transition()
+                    .style("fill-opacity", 1)
+                    .style("stroke-opacity", 1);
+% if asymmetric == True:
+                    num_instances = Number(d.source.value) + Number(d.target.value);
+% else:
+                    num_instances = Number(d.source.value);
+% endif
+
+                    tippy_content = "<span style='font-weight:900'>" + names[d.source.index] + "</span> ";
+
+                    if(names[d.source.index] != names[d.target.index]){
+                        tippy_content = tippy_content + conjunction + " <span style='font-weight:900'>" + names[d.target.index] + "</span>";
+                        tippy_content = tippy_content + "<br>occur together in" + " <span style='font-weight:900'>"
+                    }
+                    else{
+                        tippy_content = tippy_content + "<br>"
+                    }
+                        tippy_content = tippy_content + num_instances + "</span> " + "instances";
+
+% if asymmetric == True:
+                    tippy_content = tippy_content + "<br><br>"+
+                    "<span style='font-weight:900'>" + names[d.source.index] + "</span> &rarr; <span style='font-weight:900'>" + names[d.target.index] + "</span> (<span style='font-weight:900'>" + Number(d.source.value) + "</span> "+"instances"+")<br>" +
+                    "<span style='font-weight:900'>" + names[d.target.index] + "</span> &rarr; <span style='font-weight:900'>" + names[d.source.index] + "</span> (<span style='font-weight:900'>" + Number(d.target.value) + "</span> "+"instances"+")";
+% endif
+
+                    if (Array.isArray(details) && details.length && Array.isArray(details_thumbs) && details_thumbs.length) {
+                        if (Array.isArray(details[d.source.index][d.target.index]) && details[d.source.index][d.target.index].length &&
+                                Array.isArray(details_thumbs[d.source.index][d.target.index]) && details_thumbs[d.source.index][d.target.index].length) {
+                            var figures = '';
+
+                            for(var k = 0; k < details[d.source.index][d.target.index].length; k++) {
+                                figures += "<figure class='details_thumbs-chart'><img src=" + details_thumbs[d.source.index][d.target.index][k] + "><figcaption>" + details[d.source.index][d.target.index][k] + "</figcaption></figure>"
+                            }
+
+                            tippy_content = tippy_content + "<br><br><center><span><em>" + figures + "</em></span></center>";
+                        }
+                    }
+                    else if (Array.isArray(details) && details.length) {
+                        if (Array.isArray(details[d.source.index][d.target.index]) && details[d.source.index][d.target.index].length) {
+                            details_content = details[d.source.index][d.target.index].join(", ");
+                            tippy_content = tippy_content + "<br><br><span><em>" + details_content + "</em></span>";
+                        }
+                    }
+                    else if (Array.isArray(details_thumbs) && details_thumbs.length) {
+                        if (Array.isArray(details_thumbs[d.source.index][d.target.index]) && details_thumbs[d.source.index][d.target.index].length) {
+                            var figures = '';
+
+                            for(var k = 0; k < details_thumbs[d.source.index][d.target.index].length; k++) {
+                                figures += "<figure class='details_thumbs-chart'><img src=" + details_thumbs[d.source.index][d.target.index][k] + "></figure>"
+                            }
+
+                            tippy_content = tippy_content + "<br><br><center><span><em>" + figures + "</em></span></center>";
+                        }
+                    }
+
+                    if(this._tippy == null)
+                    {
+                        tippy(this, {
+                            allowHTML: true,
+                            followCursor: true,
+                            content: tippy_content,
+                            size: "large",
+                            arrow: true,
+                            maxWidth: 350,
+                            theme:'translucent',
+                        });
+                    }
+                };
+            }
+
+
+            function mouseoutChord(Names) {
+                return function (d, i) {
+% if data_table:
+                    if(table_locked){
+                        return;
+                    }
+% endif
+                    d3.select(this.ownerSVGElement)
+                        .selectAll("path.chord")
+                        .transition()
+                        .style("fill-opacity", function (d, i) {
+                            if (Highlight[d.source.index] == 1 || Highlight[d.target.index] == 1) {
+                                return 1;
+                            }
+                            else {
+                                return 0.4;
+                            }
+                         })
+                        .style("stroke-opacity", function (d, i) {
+                            if (Highlight[d.source.index] == 1 || Highlight[d.target.index] == 1) {
+                                return 1;
+                            }
+                            else {
+                                return 0.4;
+                            }
+                         });
+                };
+            }
+
+
+
+
+
+
+
+
+
+
+% if data_table:
+            var locked_icon = d3.select("#chart svg")
+                    .append("image")
+                    .attr("xlink:href", "css/locked.svg")
+                    .attr('width', 20)
+                    .attr('height', 20)
+                    .attr('x', width+margin.left + margin.right-45)
+                    .attr('y', 0)
+                    .style("opacity", 0)
+
+                    locked_icon
+                    .append("title")
+                    .text("Locked - click/tap to unlock")
+
+            table_locked = false;
+            tbl = d3.select("#chart").append("table").classed("data_table", true).style("width", "initial");
+            d3.select("#chart svg").on("click", function() {
+                table_locked = !table_locked;
+                if(table_locked){
+                    locked_icon.style("opacity", 1)
+                }
+                else{
+                    locked_icon.style("opacity", 0)
+                }
+            });
+
+
+
+            function update_table(i1, i2) {
+                data_keys = Object.keys(data_table[0]);
+
+                var filtered_data;
+
+                if(i1 == null && i2 == null){
+                    filtered_data = data_table;
+                }
+                else{
+                    filtered_data = data_table.filter(function (el) {
+
+                        if(i1 === i2){
+                            truth = ((el[data_keys[0]] === i1 && el[data_keys[1]] === i1) ||
+                            (el[data_keys[0]] === i1 && el[data_keys[1]] === "") ||
+                            (el[data_keys[1]] === i1 && el[data_keys[0]] === ""))
+                        }
+
+                        else if(i2 === -1){
+                            truth = (el[data_keys[0]] === i1 ||
+                            el[data_keys[1]] === i1)
+
+                        } else{
+                                truth = (el[data_keys[0]] === i1 &&
+                                el[data_keys[1]] === i2) ||
+                                (el[data_keys[0]] === i2 && el[data_keys[1]] === i1)
+                        }
+
+                        return truth
+                    });
+                }
+
+% if data_table_unique_column:
+                filtered_data = filtered_data.filter((v,i,a)=>a.findIndex(t=>(t[data_table_unique_column] === v[data_table_unique_column]))===i)
+% endif
+% if data_table_show_indices == False:
+                data_keys = data_keys.slice(2);
+% endif
+                var table_rows = "<thead><tr>"
+
+                for (const key of data_keys) {
+                    table_rows += "<th>" + key + "</th>"
+                }
+
+                table_rows += "</tr></thead>"
+
+                for (var j = 0; j < filtered_data.length; j++) {
+
+                    table_row = "<tr>"
+
+                    for (const key of data_keys) {
+                        table_row += "<td>" + filtered_data[j][key] + "</td>"
+                    }
+
+                    table_row += "</tr>"
+                    table_rows += table_row
+                }
+
+                d3.select("#chart table").html(table_rows);
+            }
+            update_table(null,null)
+% endif
+
+        }
+
+    }());
+    </script>

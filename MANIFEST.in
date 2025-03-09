@@ -1,0 +1,3 @@
+include chordviz/css/*
+include chordviz/js/*
+include chordviz/default.tmpl
