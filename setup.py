@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="chord",
-    version="0.2.0",
+    version="0.2.2",
     packages=find_packages(),  # Finds all Python packages with __init__.py
     include_package_data=True,  # Ensures non-Python files (templates, CSS, JS) are included
     package_data={"chord": ["default.tmpl"]},  # Ensure template is included
