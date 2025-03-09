@@ -16,7 +16,7 @@ class Chord(object):
         ('js/d3-chord.js', 'js/d3-chord.js'),
         ('js/popper.min.js', 'js/popper.min.js'),
         ('js/tippy.min.js', 'js/tippy.min.js'),
-        ('css/tippy.translucent.css', 'css/tippy.translucent.css')
+        ('css/tippy.translucent.css', 'css/tippy.translucent.css'),
         ('css/locked.svg', 'css/locked.svg')
     ]
 
