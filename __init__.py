@@ -8,7 +8,7 @@ mako.runtime.UNDEFINED = ""
 
 
 class Chord(object):
-    template_file_path = "chord/default.tmpl"
+    template_file_path = "default.tmpl"
 
     with open(template_file_path, 'r') as file:
         template = file.read()
@@ -17,12 +17,17 @@ class Chord(object):
         self,
         matrix,
         names,
-        label_style = 'default'
+        label_style='default'
     ):
-        self.html = Chord.template
+        self.html = self.load_template()
         self.matrix = matrix
         self.names = names
         self.label_style = label_style
+
+    def load_template(self):
+        """Loads the template file from the installed package."""
+        with importlib.resources.open_text("chord", self.template_file_path) as file:
+            return file.read()
 
     def __str__(self):
         return self.html
