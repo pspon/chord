@@ -3,8 +3,6 @@ import os
 import shutil
 from mako.template import Template
 import mako.runtime
-import urllib.request
-import uuid
 
 # undefined template values default to empty strings
 mako.runtime.UNDEFINED = ""
@@ -52,7 +50,8 @@ class Chord(object):
         inner_radius_scale='',
         outer_radius_scale='',
         pull='',
-        output_dir="."
+        output_dir=".",
+        bundling='source'
     ):
         self.html = self.load_template()
         self.matrix = matrix
@@ -86,17 +85,21 @@ class Chord(object):
         self.outer_radius_scale = outer_radius_scale
         self.pull = pull
         self.output_dir = output_dir
+        self.bundling = bundling
 
     def load_template(self):
         """Loads the template file from the installed package."""
-        with importlib.resources.open_text("chord", self.template_file_path) as file:
+        #with importlib.resources.open_text("chord", self.template_file_path) as file:
+        #    return file.read()
+        with open('default.tmpl','rb') as file:
             return file.read()
 
     def _copy_static_files(self):
         """Copies the necessary static files to the output directory while maintaining the folder structure."""
         for source, destination in self.static_files:
             # Get the correct resource path using importlib.resources.files
-            source_path = importlib.resources.files("chord").joinpath(source)
+            #source_path = importlib.resources.files("chord").joinpath(source)
+            source_path = 'chord/'
             destination_path = os.path.join(self.output_dir, destination)
             destination_dir = os.path.dirname(destination_path)
             if not os.path.exists(destination_dir):
@@ -106,7 +109,7 @@ class Chord(object):
 
     def render_html(self):
         """Generates the HTML using the Mako template."""
-        self._copy_static_files()  # Ensure CSS/JS are copied before rendering HTML
+        #self._copy_static_files()  # Ensure CSS/JS are copied before rendering HTML
         self.html = Template(self.html).render(
             matrix=self.matrix,
             names=self.names,
@@ -137,7 +140,8 @@ class Chord(object):
             arc_numbers=self.arc_numbers,
             inner_radius_scale=self.inner_radius_scale,
             outer_radius_scale=self.outer_radius_scale,
-            pull=self.pull
+            pull=self.pull,
+            bundling=self.bundling
         )
 
     def return_html(self):
@@ -173,7 +177,8 @@ class Chord(object):
             arc_numbers=self.arc_numbers,
             inner_radius_scale=self.inner_radius_scale,
             outer_radius_scale=self.outer_radius_scale,
-            pull=self.pull
+            pull=self.pull,
+            bundling=self.bundling
         )
 
     def to_html(self, filename="out.html"):
