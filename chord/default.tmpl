@@ -11,7 +11,11 @@
 }
 
 #chart, #featured-chart {
-    font-size: 18px;
+    % if label_style == 'oval':
+        font-size: 16px;
+    % else:
+        font-size: 18px;
+    % endif
     font-family: "Lato", sans-serif !important;
     text-align: center;
     fill: #454545;
@@ -60,7 +64,17 @@
     font-size: 10px;
 }
 
+% if label_style == 'oval':
+@media (min-width: 1200px) {
+    #chart svg, #featured-chart svg {
+        font-size: 12px;
+    }
 
+    #chart .arc_numbers, #featured-chart .arc_numbers {
+        font-size: 14px;
+    }
+}
+% else:
 @media (min-width: 600px) {
     #chart svg, #featured-chart svg {
         font-size: 18px;
@@ -70,13 +84,21 @@
         font-size: 14px;
     }
 }
+% endif
+
+
 
 #chart .data_table {
     display: inline-block;
     vertical-align: top;
     margin-left:50px;
+% if label_style == 'oval':
+    min-height: 808.0px;
+    max-height: 808.0px;
+% else:
     min-height:  158.0px;
     max-height:  158.0px;
+% endif
     margin-top: 80px;
     border-collapse: collapse;
     font-size: 0.8em;
@@ -102,7 +124,11 @@
 #chart .data_table th,
 #chart .data_table td {
     padding: 5px 15px;
-    text-align: left !important;
+    % if label_style == 'oval':
+        text-align: center !important;
+    % else:
+        text-align: left !important;
+    % endif
     width:${column_width};
     max-width:${column_width};
     overflow: hidden;
@@ -214,6 +240,13 @@
                   top: 36,
                   bottom: 36
               };
+% elif label_style == 'oval':
+              let margin = {
+                  left: 90,
+                  right: 90,
+                  top: 0,
+                  bottom: 0
+              };
 % else:
               let margin = {
                 left: 148.75530000000003,
@@ -225,9 +258,13 @@
 % endif
 
 
-
+% if label_style == 'oval':
+            let width = Math.min(window.innerWidth, 900) - margin.left - margin.right;
+            let height = Math.min(window.innerWidth, 900) - margin.top - margin.bottom;
+% else:
             let width = Math.min(window.innerWidth, 700) - margin.left - margin.right;
             let height = Math.min(window.innerWidth, 700) - margin.top - margin.bottom;
+% endif
 
             Names = ${names};
             matrix = ${matrix};
@@ -543,12 +580,43 @@
                   });
 % else:
               var outer_arc = d3.arc().innerRadius(outerRadius).outerRadius(outerRadius).cornerRadius(0);
+% if label_style == 'oval':              
+              var label_arc_scaleFactor = 1.05;
+              var label_arc = d3.arc().innerRadius(outerRadius * 1.01).outerRadius(outerRadius * 1.01).cornerRadius(0);
+% else:
               var label_arc = d3.arc().innerRadius(outerRadius * 1.1).outerRadius(outerRadius * 1.1).cornerRadius(0);
-
+% endif
               function midAngle(d) {
                   return d.startAngle + (d.endAngle - d.startAngle) / 2;
               }
+% if label_style == 'oval': 
+              function calculatePoints(d) {
+                  outer_arc = d3.arc().innerRadius(outerRadius + Pull[d.index]).outerRadius(outerRadius + Pull[d.index]).cornerRadius(0);
+                  label_arc = d3.arc().innerRadius(outerRadius * label_arc_scaleFactor + Pull[d.index]).outerRadius(outerRadius * label_arc_scaleFactor + Pull[d.index]).cornerRadius(0);
 
+                  var pos = label_arc.centroid(d);
+                  var outer_arc_pos = outer_arc.centroid(d);
+                  var angle = midAngle(d);
+                  var scaleFactor = 1.04 + 0.2 * Math.abs(Math.cos(angle)); // Adjust the factor as needed
+                  pos[0] = outer_arc_pos[0] * scaleFactor; // Adjust x position based on angle
+
+                  var outer_arc_offset = outer_arc.centroid(d);
+                  var label_arc_offset = label_arc.centroid(d);
+
+                  return [outer_arc_offset, label_arc_offset, pos];
+              }
+              function labelTransform(d) {
+                  label_arc = d3.arc().innerRadius(outerRadius * label_arc_scaleFactor + Pull[d.index]).outerRadius(outerRadius * label_arc_scaleFactor + Pull[d.index]).cornerRadius(0);
+
+                  var pos = label_arc.centroid(d);
+                  var outer_arc_pos = outer_arc.centroid(d);
+                  var angle = midAngle(d);
+                  var scaleFactor = 1.07 + 0.2 * Math.abs(Math.cos(angle)); // Adjust the factor as needed
+                  pos[0] = outer_arc_pos[0] * scaleFactor; // Adjust x position based on angle
+
+                  return 'translate(' + pos + ')';
+              }
+% else:    
               function calculatePoints(d) {
                   outer_arc = d3.arc().innerRadius(outerRadius + Pull[d.index]).outerRadius(outerRadius + Pull[d.index]).cornerRadius(0)
                   label_arc = d3.arc().innerRadius(outerRadius * 1.1 + Pull[d.index]).outerRadius(outerRadius * 1.1 + Pull[d.index]).cornerRadius(0)
@@ -570,7 +638,7 @@
 
                   return 'translate(' + pos + ')';
               }
-
+%endif
               outerArcs.append("text")
                   .attr("class", function (d) {
                       return "titles";
@@ -587,7 +655,11 @@
                   .style('text-anchor', function (d) {
                       return (midAngle(d)) < Math.PI ? 'start' : 'end';
                   })
+% if label_style == 'oval':                  
+                  .call(wrap, 120);
+% else:
                   .call(wrap, 84.60000000000001);
+% endif
 
 
               outerArcs.append('polyline')
@@ -609,7 +681,20 @@
                   .style("shape-rendering", "geometricPrecision");
 % endif
 
-% if arc_numbers == True:
+% if bundling == 'target':
+                // Function to underline digits 6 and 9 in a string
+                function underlineDigits(text) {
+                    return text.replace(/6/g, '<u>6</u>').replace(/9/g, '<u>9</u>');
+                }
+                // Function to create tspans with underlined digits 6 and 9
+                function createTspans(selection, text) {
+                    let parts = text.split(/(6|9)/); // Split text by digits 6 and 9
+                    parts.forEach(part => {
+                        selection.append("tspan")
+                            .attr("class", part === '6' || part === '9' ? 'underline' : null)
+                            .text(part);
+                    });
+                }
                 outerArcs.append("text")
                     .each(function (d) {
                         d.angle = (d.startAngle + d.endAngle) / 2 + offset;
@@ -627,14 +712,71 @@
                             ((d.angle * 180) / Math.PI - 90) +
                             ")" +
                             "translate(" +
-                            (innerRadius + ((outerRadius - innerRadius)/2) +  Pull[d.index])  +
+                            (innerRadius + ((outerRadius - innerRadius) / 2) + Pull[d.index]) +
                             ")" +
-                            ((d.angle > (Math.PI*1.5) || d.angle < (Math.PI*.5)) ? "rotate(90)" : "rotate(-90)")
+                            ((d.angle > (Math.PI * 1.5) || d.angle < (Math.PI * .5)) ? "rotate(90)" : "rotate(-90)")
                         );
                     })
-                    .text(function (d, i) {
-                        return matrix[d.index].reduce((a, b) => a + b, 0);
+                    .each(function (d, i) {
+                        let col_count = matrix.reduce((sum, row) => sum + row[d.index], 0).toString();
+                        createTspans(d3.select(this), col_count);
                     });
+
+
+                // Add CSS for underlined class
+                d3.select("head").append("style").text(`
+                    .underline {
+                        text-decoration: underline;
+                    }
+                `);
+% elif bundling == 'source':
+                // Function to underline digits 6 and 9 in a string
+                function underlineDigits(text) {
+                    return text.replace(/6/g, '<u>6</u>').replace(/9/g, '<u>9</u>');
+                }
+                // Function to create tspans with underlined digits 6 and 9
+                function createTspans(selection, text) {
+                    let parts = text.split(/(6|9)/); // Split text by digits 6 and 9
+                    parts.forEach(part => {
+                        selection.append("tspan")
+                            .attr("class", part === '6' || part === '9' ? 'underline' : null)
+                            .text(part);
+                    });
+                }
+                outerArcs.append("text")
+                    .each(function (d) {
+                        d.angle = (d.startAngle + d.endAngle) / 2 + offset;
+                    })
+                    .attr("dy", ".35em")
+                    .attr("class", function (d) {
+                        return "arc_numbers";
+                    })
+                    .attr("text-anchor", function (d) {
+                        return d.angle > Math.PI ? "middle" : "middle";
+                    })
+                    .attr("transform", function (d) {
+                        return (
+                            "rotate(" +
+                            ((d.angle * 180) / Math.PI - 90) +
+                            ")" +
+                            "translate(" +
+                            (innerRadius + ((outerRadius - innerRadius) / 2) + Pull[d.index]) +
+                            ")" +
+                            ((d.angle > (Math.PI * 1.5) || d.angle < (Math.PI * .5)) ? "rotate(90)" : "rotate(-90)")
+                        );
+                    })
+                    .each(function (d, i) {
+                        let row_count = matrix[d.index].reduce((a, b) => a + b, 0).toString();
+                        createTspans(d3.select(this), row_count);
+                    });
+
+
+                // Add CSS for underlined class
+                d3.select("head").append("style").text(`
+                    .underline {
+                        text-decoration: underline;
+                    }
+                `);
 % endif
 
                 var chords = svg.selectAll("path.chord")
@@ -735,6 +877,66 @@
 
                     update_table(names[d.index], -1);
 % endif
+
+% if bundling == "source":
+        // Dim all chords
+        d3.select(this.ownerSVGElement)
+            .selectAll("path.chord")
+            .transition()
+            .style("fill-opacity", 0.1)
+            .style("stroke-opacity", 0.1);
+
+        // Highlight chords that start at this node
+        d3.select(this.ownerSVGElement)
+            .selectAll("path.chord")
+            .filter(function (k) {
+                return k.source.index === d.index;
+            })
+            .transition()
+            .style("stroke-opacity", 1)
+            .style("fill-opacity", 1);
+
+        // Highlight chords that end at this node only if both source and target values are 1
+        d3.select(this.ownerSVGElement)
+            .selectAll("path.chord")
+            .filter(function (k) {
+                return k.target.index === d.index &&
+                       k.source.value === 1 &&
+                       k.target.value === 1;
+            })
+            .transition()
+            .style("stroke-opacity", 1)
+            .style("fill-opacity", 1);
+% elif bundling == "target":
+        // Dim all chords
+        d3.select(this.ownerSVGElement)
+            .selectAll("path.chord")
+            .transition()
+            .style("fill-opacity", 0.1)
+            .style("stroke-opacity", 0.1);
+
+        // Highlight chords that end at this node
+        d3.select(this.ownerSVGElement)
+            .selectAll("path.chord")
+            .filter(function (k) {
+                return k.target.index === d.index;
+            })
+            .transition()
+            .style("stroke-opacity", 1)
+            .style("fill-opacity", 1);
+
+        // Highlight chords that start at this node only if both source and target values are 1
+        d3.select(this.ownerSVGElement)
+            .selectAll("path.chord")
+            .filter(function (k) {
+                return k.source.index === d.index &&
+                       k.source.value === 1 &&
+                       k.target.value === 1;
+            })
+            .transition()
+            .style("stroke-opacity", 1)
+            .style("fill-opacity", 1);
+% else:
                     d3.select(this.ownerSVGElement)
                         .selectAll("path.chord")
                         .filter(function (k) {
@@ -752,6 +954,7 @@
                         .transition()
                         .style("stroke-opacity", 1)
                         .style("fill-opacity", 1);
+% endif
                 };
             }
 
@@ -949,6 +1152,8 @@
             function update_table(i1, i2) {
                 data_keys = Object.keys(data_table[0]);
 
+
+
                 var filtered_data;
 
                 if(i1 == null && i2 == null){
@@ -976,7 +1181,17 @@
                         return truth
                     });
                 }
-
+% if bundling == 'source':                
+                // Remove rows where '' equals '&rarr;' and el.target is i1
+                filtered_data = filtered_data.filter(function (el) {
+                    return !(el[''] === '&rarr;' && el[data_keys[1]] === i1);
+                });
+% elif bundling == 'target':                
+                // Remove rows where '' equals '&rarr;' and el.source is i1
+                filtered_data = filtered_data.filter(function (el) {
+                    return !(el[''] === '&rarr;' && el[data_keys[0]] === i1);
+                });                
+% endif                
 % if data_table_unique_column:
                 filtered_data = filtered_data.filter((v,i,a)=>a.findIndex(t=>(t[data_table_unique_column] === v[data_table_unique_column]))===i)
 % endif
