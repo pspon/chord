@@ -89,10 +89,10 @@ class Chord(object):
 
     def load_template(self):
         """Loads the template file from the installed package."""
-        #with importlib.resources.open_text("chord", self.template_file_path) as file:
-        #    return file.read()
-        with open('default.tmpl','rb') as file:
+        with importlib.resources.open_text("chord", self.template_file_path) as file:
             return file.read()
+        #with open('default.tmpl','rb') as file:
+        #    return file.read()
 
     def _copy_static_files(self):
         """Copies the necessary static files to the output directory while maintaining the folder structure."""
