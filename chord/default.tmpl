@@ -878,6 +878,10 @@
                     update_table(names[d.index], -1);
 % endif
 
+        // Sets to collect source and target indices
+        var connectedSourceIndices = new Set();
+        var connectedTargetIndices = new Set();
+
 % if bundling == "source":
         // Dim all chords
         d3.select(this.ownerSVGElement)
@@ -894,7 +898,11 @@
             })
             .transition()
             .style("stroke-opacity", 1)
-            .style("fill-opacity", 1);
+            .style("fill-opacity", 1)
+            .each(function (k) {
+                connectedSourceIndices.add(k.source.index);
+                connectedTargetIndices.add(k.target.index);
+            });
 
         // Highlight chords that end at this node only if both source and target values are 1
         d3.select(this.ownerSVGElement)
@@ -906,7 +914,12 @@
             })
             .transition()
             .style("stroke-opacity", 1)
-            .style("fill-opacity", 1);
+            .style("fill-opacity", 1)
+            .each(function (k) {
+                connectedSourceIndices.add(k.source.index);
+                connectedTargetIndices.add(k.target.index);
+            });
+
 % elif bundling == "target":
         // Dim all chords
         d3.select(this.ownerSVGElement)
@@ -923,7 +936,11 @@
             })
             .transition()
             .style("stroke-opacity", 1)
-            .style("fill-opacity", 1);
+            .style("fill-opacity", 1)
+            .each(function (k) {
+                connectedSourceIndices.add(k.source.index);
+                connectedTargetIndices.add(k.target.index);
+            });
 
         // Highlight chords that start at this node only if both source and target values are 1
         d3.select(this.ownerSVGElement)
@@ -935,7 +952,12 @@
             })
             .transition()
             .style("stroke-opacity", 1)
-            .style("fill-opacity", 1);
+            .style("fill-opacity", 1)
+            .each(function (k) {
+                connectedSourceIndices.add(k.source.index);
+                connectedTargetIndices.add(k.target.index);
+            });
+
 % else:
                     d3.select(this.ownerSVGElement)
                         .selectAll("path.chord")
@@ -944,7 +966,11 @@
                         })
                         .transition()
                         .style("fill-opacity", 0.1)
-                        .style("stroke-opacity", 0.1);
+                        .style("stroke-opacity", 0.1)
+                        .each(function (k) {
+                            connectedSourceIndices.add(k.source.index);
+                            connectedTargetIndices.add(k.target.index);
+                        });
 
                     d3.select(this.ownerSVGElement)
                         .selectAll("path.chord")
@@ -953,8 +979,19 @@
                         })
                         .transition()
                         .style("stroke-opacity", 1)
-                        .style("fill-opacity", 1);
+                        .style("fill-opacity", 1)
+                        .each(function (k) {
+                            connectedSourceIndices.add(k.source.index);
+                            connectedTargetIndices.add(k.target.index);
+                        });
 % endif
+        // Highlight the corresponding outer arc groups (source and target)
+        d3.select(this.ownerSVGElement)
+            .selectAll("g.group")
+            .transition()
+            .style("opacity", function (g) {
+                return (connectedSourceIndices.has(g.index) || connectedTargetIndices.has(g.index)) ? 1 : 0.3;
+            });
                 };
             }
 
@@ -987,6 +1024,15 @@
                             return 0.4;
                         }
                     });
+                    // Reset outer arcs to their default styles
+                    d3.select(this.ownerSVGElement)
+                        .selectAll("g.group")
+                        .transition()
+                        .style("stroke", function (g) {
+                            return colors(g.index);
+                        })
+                        .style("stroke-width", "0px")
+                        .style("opacity", 1);
                 };
             }
 
